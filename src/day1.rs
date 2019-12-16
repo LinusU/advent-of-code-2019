@@ -7,7 +7,7 @@ pub fn part1(input: &str) -> Result<u64, ParseIntError> {
     Ok(input
         .split_whitespace()
         .map(|mass| mass.parse::<u64>())
-        .collect::<Result<Vec<u64>, ParseIntError>>()?
+        .collect::<Result<Vec<_>, _>>()?
         .iter()
         .map(|mass| (mass / 3) - 2)
         .sum())
@@ -27,7 +27,7 @@ pub fn part2(input: &str) -> Result<u64, ParseIntError> {
     Ok(input
         .split_whitespace()
         .map(|mass| mass.parse::<u64>())
-        .collect::<Result<Vec<u64>, ParseIntError>>()?
+        .collect::<Result<Vec<_>, _>>()?
         .iter()
         .map(|mass| fuel_cost(*mass))
         .sum())
