@@ -1,8 +1,30 @@
 use std::num::ParseIntError;
+use std::str::FromStr;
 
 use aoc_runner_derive::aoc;
 
-fn password_is_valid(password: u64) -> bool {
+struct Bounds {
+    lo: u64,
+    hi: u64,
+}
+
+impl FromStr for Bounds {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split('-').map(|n| n.parse::<u64>());
+
+        Ok(Bounds { lo: parts.next().unwrap()?, hi: parts.next().unwrap()? })
+    }
+}
+
+impl Bounds {
+    fn count_valid_passwords(&self, test: &dyn Fn(u64) -> bool) -> usize {
+        (self.lo..=self.hi).filter(|n| test(*n)).count()
+    }
+}
+
+fn password_is_valid_v1(password: u64) -> bool {
     let digit0 = (password / 100_000) % 10;
     let digit1 = (password / 10_000) % 10;
     let digit2 = (password / 1_000) % 10;
@@ -18,19 +40,9 @@ fn password_is_valid(password: u64) -> bool {
 
 #[aoc(day4, part1)]
 pub fn part1(input: &str) -> Result<u64, ParseIntError> {
-    let bounds = input.split('-')
-        .map(|mass| mass.parse::<u64>())
-        .collect::<Result<Vec<_>, _>>()?;
+    let bounds: Bounds = input.parse()?;
 
-    let mut count = 0;
-
-    for password in bounds[0]..=bounds[1] {
-        if password_is_valid(password) {
-            count += 1;
-        }
-    }
-
-    Ok(count)
+    Ok(bounds.count_valid_passwords(&password_is_valid_v1) as u64)
 }
 
 #[cfg(test)]
