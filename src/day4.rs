@@ -19,37 +19,58 @@ impl FromStr for Bounds {
 }
 
 impl Bounds {
-    fn count_valid_passwords(&self, test: &dyn Fn(u64) -> bool) -> usize {
-        (self.lo..=self.hi).filter(|n| test(*n)).count()
+    fn count_valid_passwords(&self, test: &dyn Fn(Vec<u64>) -> bool) -> usize {
+        (self.lo..=self.hi).filter(|n| test(number_to_digits(*n))).count()
     }
 }
 
-fn password_is_valid_v1(password: u64) -> bool {
-    let digit0 = (password / 100_000) % 10;
-    let digit1 = (password / 10_000) % 10;
-    let digit2 = (password / 1_000) % 10;
-    let digit3 = (password / 100) % 10;
-    let digit4 = (password / 10) % 10;
-    let digit5 = password % 10;
+fn number_to_digits(num: u64) -> Vec<u64> {
+    let count = ((num as f32).log10() as usize) + 1;
+    let mut digits = Vec::with_capacity(count);
+    let mut num = num;
 
-    let has_two_adjecent = (digit0 == digit1) || (digit1 == digit2) || (digit2 == digit3) || (digit3 == digit4) || (digit4 == digit5);
-    let never_decreases = (digit0 <= digit1) && (digit1 <= digit2) && (digit2 <= digit3) && (digit3 <= digit4) && (digit4 <= digit5);
+    while num > 9 {
+        digits.push(num % 10);
+        num = num / 10;
+    }
+
+    digits.push(num);
+    digits.reverse();
+
+    assert_eq!(digits.len(), count);
+
+    digits
+}
+
+fn password_is_valid_v1(digits: Vec<u64>) -> bool {
+    let has_two_adjecent = digits.windows(2).any(|window| window[0] == window[1]);
+    let never_decreases = digits.windows(2).all(|window| window[0] <= window[1]);
 
     has_two_adjecent && never_decreases
 }
 
-fn password_is_valid_v2(password: u64) -> bool {
-    let digit0 = (password / 100_000) % 10;
-    let digit1 = (password / 10_000) % 10;
-    let digit2 = (password / 1_000) % 10;
-    let digit3 = (password / 100) % 10;
-    let digit4 = (password / 10) % 10;
-    let digit5 = password % 10;
+fn has_exactly_two_adjecent(digits: Vec<u64>) -> bool {
+    let mut tally = 1;
+    let mut last = digits[0];
 
-    let has_two_adjecent = (digit0 == digit1 && digit1 != digit2) || (digit0 != digit1 && digit1 == digit2 && digit2 != digit3) || (digit1 != digit2 && digit2 == digit3 && digit3 != digit4) || (digit2 != digit3 && digit3 == digit4 && digit4 != digit5) || (digit3 != digit4 && digit4 == digit5);
-    let never_decreases = (digit0 <= digit1) && (digit1 <= digit2) && (digit2 <= digit3) && (digit3 <= digit4) && (digit4 <= digit5);
+    for digit in &digits[1..] {
+        if *digit == last {
+            tally += 1;
+        } else if tally == 2 {
+            return true;
+        } else {
+            last = *digit;
+            tally = 1;
+        }
+    }
 
-    has_two_adjecent && never_decreases
+    tally == 2
+}
+
+fn password_is_valid_v2(digits: Vec<u64>) -> bool {
+    let never_decreases = digits.windows(2).all(|window| window[0] <= window[1]);
+
+    has_exactly_two_adjecent(digits) && never_decreases
 }
 
 #[aoc(day4, part1)]
@@ -68,6 +89,12 @@ pub fn part2(input: &str) -> Result<u64, ParseIntError> {
 
 #[cfg(test)]
 mod test {
+    #[test]
+    fn number_to_digits() {
+        assert_eq!(super::number_to_digits(123456), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(super::number_to_digits(937593), vec![9, 3, 7, 5, 9, 3]);
+    }
+
     #[test]
     fn part_1_should_give_0() {
         assert_eq!(super::part1("111110-111110"), Ok(0));
