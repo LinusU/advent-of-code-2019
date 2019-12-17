@@ -3,12 +3,12 @@ import { assertEquals } from 'https://deno.land/std/testing/asserts.ts'
 
 const input = await readFileStr('input/2019/day2.txt')
 
-function part1 (input: string): number {
+function runProgram (source: string, noun: number, verb: number): number {
   const memory = input.split(',').map(s => Number.parseInt(s))
   let eip = 0
 
-  memory[1] = 12
-  memory[2] = 2
+  memory[1] = noun
+  memory[2] = verb
 
   while (true) {
     switch (memory[eip]) {
@@ -39,4 +39,19 @@ function part1 (input: string): number {
   }
 }
 
+function part1 (input: string): number {
+  return runProgram(input, 12, 2)
+}
+
+function part2 (input: string): number {
+  for (let noun = 0; noun <= 99; noun++) {
+    for (let verb = 0; verb <= 99; verb++) {
+      if (runProgram(input, noun, verb) === 19690720) {
+        return 100 * noun + verb
+      }
+    }
+  }
+}
+
 console.log(part1(input))
+console.log(part2(input))
