@@ -4,6 +4,20 @@ use std::str::FromStr;
 
 use aoc_runner_derive::aoc;
 
+#[derive(Clone, Copy, PartialEq)]
+struct Point {
+    x: isize,
+    y: isize,
+}
+
+impl Point {
+    const ZERO: Point = Point { x: 0, y: 0 };
+
+    pub const fn manhattan_distance(self) -> usize {
+        (self.x.abs() + self.y.abs()) as usize
+    }
+}
+
 enum Instruction {
     Up(isize),
     Down(isize),
@@ -88,22 +102,22 @@ impl PathSegment {
         }
     }
 
-    pub fn offset_of(self, point: (isize, isize)) -> usize {
+    pub fn offset_of(self, point: Point) -> usize {
         match self {
-            PathSegment::Horizontal { dir: PathSegmentDirection::Ascending, x_lo, .. } => (point.0 - x_lo) as usize,
-            PathSegment::Horizontal { dir: PathSegmentDirection::Descending, x_hi, .. } => (x_hi - point.0) as usize,
-            PathSegment::Vertical { dir: PathSegmentDirection::Ascending, y_lo, .. } => (point.1 - y_lo) as usize,
-            PathSegment::Vertical { dir: PathSegmentDirection::Descending, y_hi, .. } => (y_hi - point.1) as usize,
+            PathSegment::Horizontal { dir: PathSegmentDirection::Ascending, x_lo, .. } => (point.x - x_lo) as usize,
+            PathSegment::Horizontal { dir: PathSegmentDirection::Descending, x_hi, .. } => (x_hi - point.x) as usize,
+            PathSegment::Vertical { dir: PathSegmentDirection::Ascending, y_lo, .. } => (point.y - y_lo) as usize,
+            PathSegment::Vertical { dir: PathSegmentDirection::Descending, y_hi, .. } => (y_hi - point.y) as usize,
         }
     }
 
-    pub fn intersection(self, other: PathSegment) -> Option<(isize, isize)> {
+    pub fn intersection(self, other: PathSegment) -> Option<Point> {
         match (self, other) {
             (PathSegment::Horizontal { y, x_lo, x_hi, .. }, PathSegment::Vertical { y_lo, y_hi, x, .. }) => {
-                if y_lo <= y && y <= y_hi && x_lo <= x && x <= x_hi { Some((x, y)) } else { None }
+                if y_lo <= y && y <= y_hi && x_lo <= x && x <= x_hi { Some(Point { x, y }) } else { None }
             }
             (PathSegment::Vertical { x, y_lo, y_hi, .. }, PathSegment::Horizontal { x_lo, x_hi, y, .. }) => {
-                if x_lo <= x && x <= x_hi && y_lo <= y && y <= y_hi { Some((x, y)) } else { None }
+                if x_lo <= x && x <= x_hi && y_lo <= y && y <= y_hi { Some(Point { x, y }) } else { None }
             }
             _ => None
         }
@@ -161,8 +175,8 @@ pub fn part1(input: &str) -> Result<u64, ParseIntError> {
     for segment in first_path.iter() {
         for other in second_path.iter() {
             if let Some(intersection) = segment.intersection(*other) {
-                let distance = (intersection.0.abs() + intersection.1.abs()) as usize;
-                if distance == 0 { continue; }
+                if intersection == Point::ZERO { continue; }
+                let distance = intersection.manhattan_distance();
                 min_distance = std::cmp::min(min_distance, distance);
             }
         }
@@ -186,7 +200,7 @@ pub fn part2(input: &str) -> Result<u64, ParseIntError> {
 
         for other in second_path.iter() {
             if let Some(intersection) = segment.intersection(*other) {
-                if intersection == (0, 0) { continue; }
+                if intersection == Point::ZERO { continue; }
 
                 let first_offset = segment.offset_of(intersection);
                 let second_offset = other.offset_of(intersection);
