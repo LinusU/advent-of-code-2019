@@ -3,6 +3,43 @@ use std::str::FromStr;
 
 use aoc_runner_derive::aoc;
 
+#[derive(Clone, Copy)]
+enum Parameter {
+    Position(usize),
+    Immediate(i64),
+}
+
+impl Parameter {
+    fn new(mode: i64, value: i64) -> Parameter {
+        match mode {
+            0 => Parameter::Position(value as usize),
+            1 => Parameter::Immediate(value),
+            _ => panic!("Invalid parameter mode {}", mode),
+        }
+    }
+
+    fn read(memory: &[i64], eip: usize, offset: usize) -> Parameter {
+        let mode = (memory[eip] / 10i64.pow(1 + (offset as u32))) % 10;
+        let value = memory[eip + offset];
+
+        Parameter::new(mode, value)
+    }
+
+    fn load(self, memory: &[i64]) -> i64 {
+        match self {
+            Parameter::Position(pos) => memory[pos],
+            Parameter::Immediate(value) => value,
+        }
+    }
+
+    fn store(self, value: i64, memory: &mut [i64]) {
+        match self {
+            Parameter::Position(pos) => memory[pos] = value,
+            Parameter::Immediate(_) => panic!("Cannot store to an immediate mode parameter"),
+        }
+    }
+}
+
 struct Program(Vec<i64>);
 
 impl FromStr for Program {
@@ -24,33 +61,27 @@ impl Program {
         loop {
             match memory[eip] % 100 {
                 1 => {
-                    let lhs_mode = (memory[eip] / 100) % 10;
-                    let rhs_mode = (memory[eip] / 1000) % 10;
-                    let lhs_idx = if lhs_mode == 0 { memory[eip + 1] as usize } else { eip + 1 };
-                    let rhs_idx = if rhs_mode == 0 { memory[eip + 2] as usize } else { eip + 2 };
-                    let out_idx = memory[eip + 3] as usize;
-                    memory[out_idx] = memory[lhs_idx] + memory[rhs_idx];
+                    let lhs = Parameter::read(&memory, eip, 1);
+                    let rhs = Parameter::read(&memory, eip, 2);
+                    let out = Parameter::read(&memory, eip, 3);
+                    out.store(lhs.load(&memory) + rhs.load(&memory), &mut memory);
                     eip += 4;
                 }
                 2 => {
-                    let lhs_mode = (memory[eip] / 100) % 10;
-                    let rhs_mode = (memory[eip] / 1000) % 10;
-                    let lhs_idx = if lhs_mode == 0 { memory[eip + 1] as usize } else { eip + 1 };
-                    let rhs_idx = if rhs_mode == 0 { memory[eip + 2] as usize } else { eip + 2 };
-                    let out_idx = memory[eip + 3] as usize;
-                    memory[out_idx] = memory[lhs_idx] * memory[rhs_idx];
+                    let lhs = Parameter::read(&memory, eip, 1);
+                    let rhs = Parameter::read(&memory, eip, 2);
+                    let out = Parameter::read(&memory, eip, 3);
+                    out.store(lhs.load(&memory) * rhs.load(&memory), &mut memory);
                     eip += 4;
                 }
                 3 => {
-                    let mode = (memory[eip] / 100) % 10;
-                    let ptr = if mode == 0 { memory[eip + 1] as usize } else { eip + 1 };
-                    memory[ptr] = *input.next().unwrap();
+                    let out = Parameter::read(&memory, eip, 1);
+                    out.store(*input.next().unwrap(), &mut memory);
                     eip += 2;
                 }
                 4 => {
-                    let ptr = memory[eip + 1] as usize;
-                    let val = memory[ptr];
-                    output.push(val);
+                    let src = Parameter::read(&memory, eip, 1);
+                    output.push(src.load(&memory));
                     eip += 2;
                 }
                 99 => {
