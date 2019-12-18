@@ -84,6 +84,40 @@ impl Program {
                     output.push(src.load(&memory));
                     eip += 2;
                 }
+                5 => {
+                    let test = Parameter::read(&memory, eip, 1);
+                    let jump = Parameter::read(&memory, eip, 2);
+
+                    if test.load(&memory) != 0 {
+                        eip = jump.load(&memory) as usize;
+                    } else {
+                        eip += 3;
+                    }
+                }
+                6 => {
+                    let test = Parameter::read(&memory, eip, 1);
+                    let jump = Parameter::read(&memory, eip, 2);
+
+                    if test.load(&memory) == 0 {
+                        eip = jump.load(&memory) as usize;
+                    } else {
+                        eip += 3;
+                    }
+                }
+                7 => {
+                    let lhs = Parameter::read(&memory, eip, 1);
+                    let rhs = Parameter::read(&memory, eip, 2);
+                    let out = Parameter::read(&memory, eip, 3);
+                    out.store(if lhs.load(&memory) < rhs.load(&memory) { 1 } else { 0 }, &mut memory);
+                    eip += 4;
+                }
+                8 => {
+                    let lhs = Parameter::read(&memory, eip, 1);
+                    let rhs = Parameter::read(&memory, eip, 2);
+                    let out = Parameter::read(&memory, eip, 3);
+                    out.store(if lhs.load(&memory) == rhs.load(&memory) { 1 } else { 0 }, &mut memory);
+                    eip += 4;
+                }
                 99 => {
                     break;
                 }
@@ -103,6 +137,12 @@ pub fn part1(input: &str) -> Result<i64, ParseIntError> {
     Ok(*program.run(vec![1]).last().unwrap())
 }
 
+#[aoc(day5, part2)]
+pub fn part2(input: &str) -> Result<i64, ParseIntError> {
+    let program = input.parse::<Program>()?;
+    Ok(program.run(vec![5])[0])
+}
+
 #[cfg(test)]
 mod test {
     use super::Program;
@@ -117,5 +157,26 @@ mod test {
         assert_eq!(run("1101,100,-1,4,0", vec![]), vec![]);
         assert_eq!(run("1002,6,3,6,4,0,33", vec![]), vec![1002]);
         assert_eq!(run("3,5,4,5,99,0", vec![-16]), vec![-16]);
+    }
+
+    #[test]
+    fn part_2() {
+        assert_eq!(run("3,9,8,9,10,9,4,9,99,-1,8", vec![7]), vec![0]);
+        assert_eq!(run("3,9,8,9,10,9,4,9,99,-1,8", vec![8]), vec![1]);
+
+        assert_eq!(run("3,9,7,9,10,9,4,9,99,-1,8", vec![7]), vec![1]);
+        assert_eq!(run("3,9,7,9,10,9,4,9,99,-1,8", vec![8]), vec![0]);
+
+        assert_eq!(run("3,3,1108,-1,8,3,4,3,99", vec![7]), vec![0]);
+        assert_eq!(run("3,3,1108,-1,8,3,4,3,99", vec![8]), vec![1]);
+
+        assert_eq!(run("3,3,1107,-1,8,3,4,3,99", vec![7]), vec![1]);
+        assert_eq!(run("3,3,1107,-1,8,3,4,3,99", vec![8]), vec![0]);
+
+        assert_eq!(run("3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9", vec![0]), vec![0]);
+        assert_eq!(run("3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9", vec![2]), vec![1]);
+
+        assert_eq!(run("3,3,1105,-1,9,1101,0,0,12,4,12,99,1", vec![0]), vec![0]);
+        assert_eq!(run("3,3,1105,-1,9,1101,0,0,12,4,12,99,1", vec![2]), vec![1]);
     }
 }
