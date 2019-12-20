@@ -1,53 +1,58 @@
 use std::collections::HashMap;
 use std::num::ParseIntError;
+use std::str::FromStr;
 
 use aoc_runner_derive::aoc;
 
-#[derive(Clone, Copy)]
-struct Body {
-    orbits: u64,
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+struct Id(u32);
+
+impl Id {
+    fn new(name: &str) -> Id {
+        assert!(name.len() <= 4);
+        assert!(name.is_ascii());
+        Id(name.as_bytes().iter().fold(0, |mem, byte| mem << 8 | (*byte as u32)))
+    }
 }
 
-impl Body {
-    fn child(self) -> Body {
-        Body { orbits: self.orbits + 1 }
+struct Map {
+    orbits: HashMap::<Id, Id>
+}
+
+impl FromStr for Map {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Map, ParseIntError> {
+        let mut orbits = HashMap::new();
+
+        for line in s.split_whitespace() {
+            let parts: Vec<&str> = line.split(')').collect();
+            orbits.insert(Id::new(parts[1]), Id::new(parts[0]));
+        }
+
+        Ok(Map { orbits })
     }
 }
 
 #[aoc(day6, part1)]
-pub fn part1(input: &str) -> Result<u64, ParseIntError> {
-    let mut bodies = HashMap::<&str, Body>::new();
+pub fn part1(input: &str) -> Result<usize, ParseIntError> {
+    let map = input.parse::<Map>()?;
+    let mut orbit_counts = HashMap::<Id, usize>::new();
 
-    bodies.insert("COM", Body { orbits: 0 });
+    orbit_counts.insert(Id::new("COM"), 0);
 
-    let mut later = Vec::<Vec<&str>>::new();
-
-    for line in input.split_whitespace() {
-        let parts: Vec<&str> = line.split(')').collect();
-
-        if bodies.contains_key(parts[0]) {
-            let body = bodies[parts[0]].child();
-            bodies.insert(parts[1], body);
-        } else {
-            later.push(parts);
-        }
-    }
-
-    while later.len() > 0 {
-        let current = later;
-        later = Vec::<Vec<&str>>::new();
-
-        for parts in current {
-            if bodies.contains_key(parts[0]) {
-                let body = bodies[parts[0]].child();
-                bodies.insert(parts[1], body);
-            } else {
-                later.push(parts);
+    fn get_count(orbit_counts: &mut HashMap<Id, usize>, orbits: &HashMap<Id, Id>, id: Id) -> usize {
+        match orbit_counts.get(&id) {
+            Some(count) => *count,
+            None => {
+                let count = get_count(orbit_counts, orbits, orbits[&id]) + 1;
+                orbit_counts.insert(id, count);
+                count
             }
         }
     }
 
-    Ok(bodies.values().map(|b| b.orbits).sum())
+    Ok(map.orbits.keys().map(|k| get_count(&mut orbit_counts, &map.orbits, *k)).sum())
 }
 
 #[cfg(test)]
