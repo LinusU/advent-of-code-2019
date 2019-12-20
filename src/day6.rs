@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use aoc_runner_derive::aoc;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 struct Id(u32);
 
 impl Id {
@@ -55,11 +55,52 @@ pub fn part1(input: &str) -> Result<usize, ParseIntError> {
     Ok(map.orbits.keys().map(|k| get_count(&mut orbit_counts, &map.orbits, *k)).sum())
 }
 
+#[aoc(day6, part2)]
+pub fn part2(input: &str) -> Result<usize, ParseIntError> {
+    let map = input.parse::<Map>()?;
+
+    let me = Id::new("YOU");
+    let root = Id::new("COM");
+    let santa = Id::new("SAN");
+
+    let start = map.orbits[&me];
+    let end = map.orbits[&santa];
+
+    let mut cache = HashMap::<Id, usize>::new();
+
+    let mut pos = start;
+    for i in 0.. {
+        cache.insert(pos, i);
+        if pos == root { break; }
+        pos = map.orbits[&pos];
+    }
+
+    let mut pos = end;
+    for i in 0.. {
+        match cache.get(&pos) {
+            None => {
+                pos = map.orbits[&pos];
+            }
+            Some(value) => {
+                return Ok(i + value);
+            }
+        }
+    }
+
+    unreachable!();
+}
+
 #[cfg(test)]
 mod test {
     #[test]
     fn part1() {
         assert_eq!(super::part1("COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L"), Ok(42));
         assert_eq!(super::part1("E)J\nJ)K\nC)D\nG)H\nD)E\nB)G\nCOM)B\nD)I\nB)C\nK)L\nE)F"), Ok(42));
+    }
+
+    #[test]
+    fn part2() {
+        assert_eq!(super::part2("COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN"), Ok(4));
+        assert_eq!(super::part2("E)J\nJ)K\nC)D\nG)H\nD)E\nB)G\nCOM)B\nD)I\nB)C\nK)L\nE)F\nK)YOU\nI)SAN"), Ok(4));
     }
 }
