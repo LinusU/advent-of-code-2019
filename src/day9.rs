@@ -215,6 +215,17 @@ pub fn part1(input: &str) -> Result<i64, ParseIntError> {
     Ok(last)
 }
 
+#[aoc(day9, part2)]
+pub fn part2(input: &str) -> Result<i64, ParseIntError> {
+    let program = input.parse::<Program>()?;
+    let mut process = program.spawn();
+
+    process.feed(2);
+    process.run();
+
+    Ok(process.read().unwrap())
+}
+
 #[cfg(test)]
 mod test {
     use super::Program;
