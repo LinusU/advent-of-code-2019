@@ -219,6 +219,54 @@ pub fn part1(input: &str) -> Result<i64, ParseIntError> {
     Ok(max)
 }
 
+#[aoc(day7, part2)]
+pub fn part2(input: &str) -> Result<i64, ParseIntError> {
+    let program = input.parse::<Program>()?;
+    let configurations = permutations([5, 6, 7, 8, 9]);
+
+    let mut max = 0;
+
+    for config in configurations {
+        let mut a = program.spawn();
+        let mut b = program.spawn();
+        let mut c = program.spawn();
+        let mut d = program.spawn();
+        let mut e = program.spawn();
+
+        a.feed(config[0]);
+        b.feed(config[1]);
+        c.feed(config[2]);
+        d.feed(config[3]);
+        e.feed(config[4]);
+
+        let mut last: i64 = 0;
+        loop {
+            a.feed(last);
+            a.run();
+            b.feed(a.read().unwrap());
+            b.run();
+            c.feed(b.read().unwrap());
+            c.run();
+            d.feed(c.read().unwrap());
+            d.run();
+            e.feed(d.read().unwrap());
+            e.run();
+
+            last = e.read().unwrap();
+
+            if e.run() == ProcessRunResult::Complete {
+                break;
+            }
+        }
+
+        if last > max {
+            max = last;
+        }
+    }
+
+    Ok(max)
+}
+
 #[cfg(test)]
 mod test {
     use super::Program;
@@ -297,5 +345,11 @@ mod test {
     #[test]
     fn day7_part1() {
         assert_eq!(super::part1("3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0"), Ok(43210));
+    }
+
+    #[test]
+    fn day7_part2() {
+        assert_eq!(super::part2("3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5"), Ok(139629729));
+        assert_eq!(super::part2("3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10"), Ok(18216));
     }
 }
