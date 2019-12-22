@@ -1,3 +1,4 @@
+use std::f64::consts::{FRAC_PI_2, PI};
 use std::num::ParseIntError;
 use std::str::FromStr;
 
@@ -59,6 +60,33 @@ impl Map {
     fn has_asteroid_at(&self, pos: (usize, usize)) -> bool {
         self.0[pos.1][pos.0].has_asteroid()
     }
+
+    fn best_location(&self) -> ((usize, usize), usize) {
+        let asteroids = self.asteroids();
+        let mut result = ((0, 0), 0);
+
+        for asteroid in &asteroids {
+            let mut reachable = 0;
+
+            for other in &asteroids {
+                if asteroid == other { continue; }
+
+                if can_see_asteroid(&self, *asteroid, *other) {
+                    reachable += 1;
+                }
+            }
+
+            if reachable > result.1 {
+                result = (*asteroid, reachable);
+            }
+        }
+
+        result
+    }
+
+    fn blast_asteroid(&mut self, pos: (usize, usize)) {
+        self.0[pos.1][pos.0] = Position::Empty;
+    }
 }
 
 fn intermidiates(lhs: (usize, usize), rhs: (usize, usize)) -> Vec<(usize, usize)> {
@@ -76,29 +104,55 @@ fn can_see_asteroid(map: &Map, lhs: (usize, usize), rhs: (usize, usize)) -> bool
 }
 
 #[aoc(day10, part1)]
-pub fn part1(input: &str) -> Result<u64, ParseIntError> {
+pub fn part1(input: &str) -> Result<usize, ParseIntError> {
     let map = input.parse::<Map>()?;
+
+    Ok(map.best_location().1)
+}
+
+fn direction(base: (usize, usize), pos: (usize, usize)) -> f64 {
+    let delta = (base.0 as isize - pos.0 as isize, base.1 as isize - pos.1 as isize);
+    let atan2 = f64::atan2(delta.1 as f64, delta.0 as f64);
+
+    if atan2 < FRAC_PI_2 { atan2 + FRAC_PI_2 + PI } else { atan2 - FRAC_PI_2 }
+}
+
+#[aoc(day10, part2)]
+pub fn part2(input: &str) -> Result<usize, ParseIntError> {
+    let mut map = input.parse::<Map>()?;
+    let base = map.best_location().0;
     let asteroids = map.asteroids();
 
-    let mut max_reachable = 0;
+    let mut destroyed = 0;
+    let mut queue = asteroids.iter().filter(|pos| **pos != base).map(|pos| (*pos, direction(base, *pos))).collect::<Vec<_>>();
+    let mut result = Option::<usize>::None;
 
-    for asteroid in &asteroids {
-        let mut reachable = 0;
+    queue.sort_by(|(_, lhs), (_, rhs)| f64::partial_cmp(lhs, rhs).unwrap());
 
-        for other in &asteroids {
-            if asteroid == other { continue; }
+    while result == None {
+        assert!(queue.len() > 0);
 
-            if can_see_asteroid(&map, *asteroid, *other) {
-                reachable += 1;
+        let mut marked = Vec::<(usize, usize)>::new();
+
+        queue.retain(|(pos, _)| {
+            if !can_see_asteroid(&map, base, *pos) { return true; }
+
+            marked.push(*pos);
+            destroyed += 1;
+
+            if destroyed == 200 {
+                result = Some(pos.0 * 100 + pos.1);
             }
-        }
 
-        if reachable > max_reachable {
-            max_reachable = reachable;
+            false
+        });
+
+        for asteroid in marked {
+            map.blast_asteroid(asteroid);
         }
     }
 
-    Ok(max_reachable)
+    Ok(result.unwrap())
 }
 
 #[cfg(test)]
@@ -112,7 +166,26 @@ mod test {
     }
 
     #[test]
+    fn direction() {
+        use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
+
+        assert_eq!(super::direction((1, 1), (1, 0)), 0f64);
+        assert_eq!(super::direction((1, 1), (2, 0)), FRAC_PI_4);
+        assert_eq!(super::direction((1, 1), (2, 1)), FRAC_PI_2);
+        assert_eq!(super::direction((1, 1), (2, 2)), FRAC_PI_2 + FRAC_PI_4);
+        assert_eq!(super::direction((1, 1), (1, 2)), PI);
+        assert_eq!(super::direction((1, 1), (0, 2)), PI + FRAC_PI_4);
+        assert_eq!(super::direction((1, 1), (0, 1)), PI + FRAC_PI_2);
+        assert_eq!(super::direction((1, 1), (0, 0)), PI + FRAC_PI_2 + FRAC_PI_4);
+    }
+
+    #[test]
     fn part1() {
         assert_eq!(super::part1(".#..#\n.....\n#####\n....#\n...##"), Ok(8));
+    }
+
+    #[test]
+    fn part2() {
+        assert_eq!(super::part2(".#..##.###...#######\n##.############..##.\n.#.######.########.#\n.###.#######.####.#.\n#####.##.#.##.###.##\n..#####..#.#########\n####################\n#.####....###.#.#.##\n##.#################\n#####.##.###..####..\n..######..##.#######\n####.##.####...##..#\n.#####..#.######.###\n##...#.##########...\n#.##########.#######\n.####.#.###.###.#.##\n....##.##.###..#####\n.#.#.###########.###\n#.#.#.#####.####.###\n###.##.####.##.#..##"), Ok(802));
     }
 }
