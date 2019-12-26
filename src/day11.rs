@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+use std::fmt;
 use std::num::ParseIntError;
 use std::ops::{Index, IndexMut};
 use std::str::FromStr;
@@ -222,7 +223,7 @@ impl From<i64> for Turn {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum Color {
+pub enum Color {
     Black,
     White,
 }
@@ -260,13 +261,54 @@ impl HullPaintingRobot {
         match (self.direction, turn) {
             (Direction::Up, Turn::Left) => { self.direction = Direction::Left; self.position.0 -= 1; },
             (Direction::Up, Turn::Right) => { self.direction = Direction::Right; self.position.0 += 1; },
-            (Direction::Left, Turn::Left) => { self.direction = Direction::Down; self.position.1 -= 1; },
-            (Direction::Left, Turn::Right) => { self.direction = Direction::Up; self.position.1 += 1; },
+            (Direction::Left, Turn::Left) => { self.direction = Direction::Down; self.position.1 += 1; },
+            (Direction::Left, Turn::Right) => { self.direction = Direction::Up; self.position.1 -= 1; },
             (Direction::Down, Turn::Left) => { self.direction = Direction::Right; self.position.0 += 1; },
             (Direction::Down, Turn::Right) => { self.direction = Direction::Left; self.position.0 -= 1; },
-            (Direction::Right, Turn::Left) => { self.direction = Direction::Up; self.position.1 += 1; },
-            (Direction::Right, Turn::Right) => { self.direction = Direction::Down; self.position.1 -= 1; },
+            (Direction::Right, Turn::Left) => { self.direction = Direction::Up; self.position.1 -= 1; },
+            (Direction::Right, Turn::Right) => { self.direction = Direction::Down; self.position.1 += 1; },
         }
+    }
+}
+
+pub struct Hull {
+    panels: HashMap<(isize, isize), Color>,
+}
+
+impl Hull {
+    fn new() -> Hull {
+        let mut panels = HashMap::new();
+        panels.insert((0, 0), Color::White);
+        Hull { panels }
+    }
+
+    fn paint(&mut self, position: (isize, isize), paint: Color) {
+        self.panels.insert(position, paint);
+    }
+
+    fn look(&mut self, position: (isize, isize)) -> Color {
+        *self.panels.get(&position).unwrap_or(&Color::Black)
+    }
+}
+
+impl fmt::Display for Hull {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "")?;
+
+        let lo_x = self.panels.keys().map(|(x, _)| *x).min().unwrap();
+        let hi_x = self.panels.keys().map(|(x, _)| *x).max().unwrap();
+        let lo_y = self.panels.keys().map(|(_, y)| *y).min().unwrap();
+        let hi_y = self.panels.keys().map(|(_, y)| *y).max().unwrap();
+
+        for y in lo_y ..= hi_y {
+            for x in lo_x ..= hi_x {
+                write!(f, "{}", if self.panels.get(&(x, y)) != Some(&Color::White) { "█" } else { " " })?;
+            }
+
+            writeln!(f, "")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -292,6 +334,30 @@ pub fn part1(input: &str) -> Result<usize, ParseIntError> {
     }
 
     Ok(panels.len())
+}
+
+#[aoc(day11, part2)]
+pub fn part2(input: &str) -> Result<Hull, ParseIntError> {
+    let program = input.parse::<Program>()?;
+    let mut process = program.spawn();
+    let mut robot = HullPaintingRobot::new();
+    let mut hull = Hull::new();
+
+    loop {
+        match process.run() {
+            ProcessRunResult::Complete => break,
+            ProcessRunResult::WouldBlock => {},
+        }
+
+        while let Some(paint) = process.read() {
+            hull.paint(robot.position, paint.into());
+            robot.step(process.read().unwrap().into());
+        }
+
+        process.feed(hull.look(robot.position).into());
+    }
+
+    Ok(hull)
 }
 
 #[cfg(test)]
